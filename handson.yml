@@ -1,0 +1,374 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "API Gateway Handson"
+Resources:
+##########################################################
+# Network
+##########################################################
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags: 
+        - Key: Name
+          Value: AGH-VPC
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+        - Key: Name
+          Value: AGH-InternetGateway
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn:
+      - VPC
+      - InternetGateway
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  ALBPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPC
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      CidrBlock: 10.0.0.0/24
+      Tags:
+        - Key: Name
+          Value: AGH-ALBPublicSubnet1
+      VpcId: !Ref VPC
+  ALBPublicSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VPC
+    Properties:
+      Tags: 
+        - Key: Name
+          Value: AGH-ALBPublicSubnet1RouteTable
+      VpcId: !Ref VPC
+  ALBPublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - ALBPublicSubnet1
+      - ALBPublicSubnet1RouteTable
+    Properties:
+      RouteTableId: !Ref ALBPublicSubnet1RouteTable
+      SubnetId: !Ref ALBPublicSubnet1
+  ALBPublicSubnet1RouteTableRoute1:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - InternetGateway
+      - ALBPublicSubnet1RouteTable
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref ALBPublicSubnet1RouteTable
+  ALBPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPC
+    Properties:
+      AvailabilityZone: ap-northeast-1c
+      CidrBlock: 10.0.1.0/24
+      Tags:
+        - Key: Name
+          Value: AGH-ALBPublicSubnet2
+      VpcId: !Ref VPC
+  ALBPublicSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VPC
+    Properties:
+      Tags: 
+        - Key: Name
+          Value: AGH-ALBPublicSubnet2RouteTable
+      VpcId: !Ref VPC
+  ALBPublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - ALBPublicSubnet2
+      - ALBPublicSubnet2RouteTable
+    Properties:
+      RouteTableId: !Ref ALBPublicSubnet2RouteTable
+      SubnetId: !Ref ALBPublicSubnet2
+  ALBPublicSubnet2RouteTableRoute1:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - InternetGateway
+      - ALBPublicSubnet2RouteTable
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref ALBPublicSubnet2RouteTable
+  InstancePublicSubnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPC
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      CidrBlock: 10.0.2.0/24
+      Tags:
+        - Key: Name
+          Value: AGH-InstancePublicSubnet1
+      VpcId: !Ref VPC
+  InstancePublicSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VPC
+    Properties:
+      Tags: 
+        - Key: Name
+          Value: AGH-InstancePublicSubnet1RouteTable
+      VpcId: !Ref VPC
+  InstancePublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - InstancePublicSubnet1
+      - InstancePublicSubnet1RouteTable
+    Properties:
+      RouteTableId: !Ref InstancePublicSubnet1RouteTable
+      SubnetId: !Ref InstancePublicSubnet1
+  InstancePublicSubnet1RouteTableRoute1:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - InternetGateway
+      - InstancePublicSubnet1RouteTable
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref InstancePublicSubnet1RouteTable
+
+##########################################################
+# Security Group
+##########################################################
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALBSecurityGroup
+      GroupName: AGH-ALBSecurityGroup
+      Tags: 
+        - Key: Name
+          Value: AGH-ALBSecurityGroup
+      VpcId: !Ref VPC
+  ALBSecurityGroupIngress1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      CidrIp: 0.0.0.0/0
+      FromPort: 8080
+      GroupId: !Ref ALBSecurityGroup
+      IpProtocol: tcp
+      ToPort: 8080
+  ALBSecurityGroupEgress1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      DestinationSecurityGroupId: !Ref InstanceSecurityGroup
+      FromPort: 10080
+      GroupId: !Ref ALBSecurityGroup
+      IpProtocol: tcp
+      ToPort: 10080
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: InstanceSecurityGroup
+      GroupName: AGH-InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: AGH-InstanceSecurityGroup
+      VpcId: !Ref VPC
+  InstanceSecurityGroupIngress1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      CidrIp: 0.0.0.0/0
+      FromPort: 22
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: tcp
+      ToPort: 22
+  InstanceSecurityGroupIngress2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      FromPort: 10080
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref ALBSecurityGroup
+      ToPort: 10080
+  InstanceSecurityGroupEgress1:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      CidrIp: 0.0.0.0/0
+      FromPort: -1
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: -1
+      ToPort: -1
+
+##########################################################
+# API Gateway
+##########################################################
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      DisableExecuteApiEndpoint: false
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      FailOnWarnings: false
+      Name: AGH-RestApi
+      Tags:
+        - Key: Name
+          Value: AGH-RestApi
+  RestApiResource:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: RestApi
+    Properties:
+      ParentId: !GetAtt [RestApi, "RootResourceId"]
+      PathPart: "hello"
+      RestApiId: !Ref RestApi
+  RestApiMethod:
+    Type: AWS::ApiGateway::Method
+    DependsOn:
+      - RestApi
+      - RestApiResource
+      - ALB
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        ConnectionType: INTERNET
+        IntegrationHttpMethod: GET
+        IntegrationResponses:
+          - StatusCode: 200
+        PassthroughBehavior: WHEN_NO_MATCH
+        TimeoutInMillis: 29000
+        Type: HTTP_PROXY
+        Uri: !Join
+          - ""
+          - - "http://"
+            - !GetAtt ALB.DNSName
+            - ":8080"
+      ResourceId: !Ref RestApiResource
+      RestApiId: !Ref RestApi
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - RestApi
+      - RestApiMethod
+    Properties:
+      RestApiId: !Ref RestApi
+  RestApiStage:
+    DependsOn:
+      - RestApi
+      - RestApiDeployment
+      - ALB
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      CacheClusterEnabled: false
+      DeploymentId: !Ref RestApiDeployment
+      MethodSettings:
+        - CacheDataEncrypted: false
+          DataTraceEnabled: false
+          HttpMethod: "*"
+          ResourcePath: "/*"
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 5
+      RestApiId: !Ref RestApi
+      StageName: dev
+      Tags:
+        - Key: Name
+          Value: AGH-RestApiStage
+      Variables:
+        url: !Join
+          - ""
+          - - !GetAtt ALB.DNSName
+            - ":8080"
+
+##########################################################
+# ALB
+##########################################################
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - ALBPublicSubnet1
+      - ALBPublicSubnet2
+    Properties:
+      IpAddressType: ipv4
+      Name: AGH-ALB
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref ALBPublicSubnet1
+        - !Ref ALBPublicSubnet2
+      Tags:
+        - Key: Name
+          Value: AGH-ALB
+      Type: application
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - ALB
+      - ALBTargetGroup
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref ALBTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ALB
+      Port: 8080
+      Protocol: HTTP
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn:
+      - VPC
+      - Instance
+    Properties:
+      IpAddressType: ipv4
+      Name: AGH-ALBTargetGroup
+      Port: 10080
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: AGH-ALBTargetGroup
+      Targets:
+        - Id: !Ref Instance
+          Port: 10080
+      TargetType: instance
+      VpcId: !Ref VPC
+
+##########################################################
+# EC2 Instance
+##########################################################
+  KeyPair:
+    Type: 'AWS::EC2::KeyPair'
+    Properties:
+      KeyFormat: pem
+      KeyName: AGH-KeyPair
+      KeyType: rsa
+      Tags:
+        - Key: Name
+          Value: AGH-KeyPair
+  Instance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - KeyPair
+      - InstanceSecurityGroup
+      - InstancePublicSubnet1
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      DisableApiTermination: false
+      EbsOptimized: false
+      ImageId: ami-098940df4d3292e9a
+      InstanceInitiatedShutdownBehavior: stop
+      InstanceType: t3.nano
+      KeyName: !Ref KeyPair
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+          PrivateIpAddress: 10.0.2.4
+          SubnetId: !Ref InstancePublicSubnet1
+      SourceDestCheck: true
+      Tags: 
+        - Key: Name
+          Value: AGH-Instance
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo dnf -y install nmap-ncat
+          while :; do { echo -e 'HTTP/1.1 200 OK\n\nhello'; } | nc -l 10080; done
